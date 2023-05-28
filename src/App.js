@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import Movie from '../src/Movie';
 import './App.css';
 
-const API_KEY = 'f14af19e54da6807682367f768d47fc3';
+const API_KEY = 'e7811799fcbd2c5fe1c7eed7a7955b7d';
 const API_BASE_URL = 'https://api.themoviedb.org/3';
 const API_POPULAR_MOVIES_URL = `${API_BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&include_adult=false&include_video=false&page=1`;
 const API_POPULAR_TVSHOWS_URL = `${API_BASE_URL}/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=popularity.desc&include_adult=false&include_video=false&page=1`;
@@ -41,23 +41,47 @@ const App = () => {
       fetchPopularMovies();
       fetchPopularTVShows();
     } else {
-      fetch(API_SEARCH_URL + searchQuery)
-        .then(response => response.json())
-        .then(data => {
-          const searchResults = data.results.reduce(
-            (result, item) => {
-              if (item.media_type === 'movie') {
-                result.movies.push(item);
-              } else if (item.media_type === 'tv') {
-                result.tvshows.push(item);
-              }
-              return result;
-            },
-            { movies: [], tvshows: [], searchType: 'search' } // Set searchType to 'search'
-          );
-          setMovies(searchResults);
-        })
-        .catch(error => console.log(error));
+      const allSearchResults = [];
+      let totalPages = 0;
+      let currentPage = 1;
+
+      const fetchSearchResults = () => {
+        const url = `${API_SEARCH_URL}${searchQuery}&page=${currentPage}`;
+
+        fetch(url)
+          .then(response => response.json())
+          .then(data => {
+            allSearchResults.push(...data.results);
+
+            if (currentPage === 1) {
+              totalPages = data.total_pages;
+            }
+
+            if (currentPage < totalPages) {
+              currentPage++;
+              fetchSearchResults();
+            } else {
+              const searchResults = {
+                movies: [],
+                tvshows: [],
+                searchType: 'search'
+              };
+
+              allSearchResults.forEach(item => {
+                if (item.media_type === 'movie') {
+                  searchResults.movies.push(item);
+                } else if (item.media_type === 'tv') {
+                  searchResults.tvshows.push(item);
+                }
+              });
+
+              setMovies(searchResults);
+            }
+          })
+          .catch(error => console.log(error));
+      };
+
+      fetchSearchResults();
     }
   };
 
